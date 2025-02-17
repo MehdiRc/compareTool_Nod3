@@ -1,0 +1,145 @@
+table,
+th,
+td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+
+th {
+    cursor: pointer; /* Makes the cursor a hand when hovering over table headers */
+    min-width: 100px;
+    padding: 4px;
+}
+
+.mapping-table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+    margin: 0;
+    padding: 0;
+    border: 1px solid black;
+}
+
+.mapping-table th, 
+.mapping-table td {
+    border: 1px solid black;
+    padding: 8px;
+    text-align: left;
+    position: relative;
+    min-width: 100px;
+}
+
+.mapping-table th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.mapping-table th:hover {
+    background-color: #e5e5e5;
+}
+
+.mapping-table tr {
+    display: table-row;
+}
+
+.mapping-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.mapping-table tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+.table-cell {
+    position: relative;
+    padding: 8px;
+    overflow: hidden;
+}
+
+.cell-label {
+    position: absolute;
+    z-index: 10;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: black;
+    width: 100%;
+    opacity: 1 !important; /* Ensure text is always fully visible */
+}
+
+.progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    z-index: 1;
+    /* The opacity of this element will be controlled by JavaScript */
+}
+
+/* Remove opacity from td and apply it only to progress-bar */
+.mapping-table td {
+    opacity: 1 !important;
+}
+
+.mean-row {
+    border-top: 5px solid #000000;
+    border-bottom: 5px solid #000000;
+    border-style: double;
+}
+
+.mean-row td {
+    border-top: 5px solid #000000;
+    border-bottom: 5px solid #000000;
+    border-style: double;
+    position: relative; /* For progress bar positioning */
+}
+
+.mean-row .cell-label {
+    font-weight: bold;
+    z-index: 2;
+}
+
+.mean-row .progress-bar {
+    z-index: 1;
+}
+
+.score {
+    border-left: 5px solid #000000;
+    border-right: 5px solid #000000;
+    border-style: double;
+}
+
+.score td,
+.score th {
+    border-left: 5px solid #000000;
+    border-right: 5px solid #000000;
+    border-style: double;
+}
+
+/* Sorting indicators */
+th.asc::after {
+    content: ' ▲';
+}
+
+th.desc::after {
+    content: ' ▼';
+}
+
+.min-range,
+.max-range {
+    display: none;
+}
+
+table {
+    table-layout: fixed;
+}
+
+input[type=range].disabled {
+    background-color: #ddd; /* Gray background for disabled sliders */
+} 
