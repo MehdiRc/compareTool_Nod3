@@ -73,8 +73,8 @@ The application is built with vanilla JavaScript and uses:
 ## Browser Support
 
 Supports modern browsers with ES6+ capabilities:
-- Chrome (recommended)
-- Firefox
+- Firefox (recommended)
+- Chrome 
 - Safari
 - Edge
 
