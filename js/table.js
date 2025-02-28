@@ -10,9 +10,6 @@ function createDataTable(table) {
     table.mydiv.style.top = table.position.top;
     table.mydiv.style.left = table.position.left;
     
-    // Set initial dimensions
-    table.mydiv.style.width = '800px';
-    table.mydiv.style.height = 'auto';
     document.body.appendChild(table.mydiv);
 
     createTableHeader(table);
@@ -20,7 +17,7 @@ function createDataTable(table) {
     setupDragAndResize(table);
     
     // Set initial resize mode
-    table.resizeMode = 'both';
+    table.resizeMode = 'full';
     
     // Create initial histograms
     if (activateHistograms) {
@@ -30,6 +27,20 @@ function createDataTable(table) {
     updateScores(table);
     updateColors(table);
     calculateColumnMeans(table);
+    
+    // Initialize histogram height measurement
+    if (!table.histogramHeight) {
+        measureHistogramHeight(table);
+    }
+    
+    // Calculate minimum size based on content
+    const minSize = calculateMinimumTableSize(table);
+    
+    // Set initial dimensions based on minimum size with some padding
+    table.mydiv.style.width = (minSize.width + 50) + 'px';
+    
+    // Apply initial resize to ensure correct dimensions
+    updateResize(table);
 }
 
 function createTableHeader(table) {
@@ -72,13 +83,29 @@ function addHeaderButtons(table) {
     // Both dimensions resize button
     const bothResizeBtn = document.createElement('button');
     bothResizeBtn.textContent = '⛶';
-    bothResizeBtn.id = 'resize-both' + table.index;
+    bothResizeBtn.id = 'resize-full' + table.index;
     bothResizeBtn.classList.add('active');
     bothResizeBtn.onclick = function() {
-        table.resizeMode = 'both';
-        table.dataTable.style.display = null;
-        table.dataTable.style.overflow = null;
-        updateResize(table);
+        // If already in 'full' mode, reset the table size to show all content
+        if (table.resizeMode === 'full') {
+            // Calculate proper dimensions
+            const mydivHeaderHeight = getOffsetHeight(table.mydivheader);
+            const naturalHeight = getScrollHeight(table.dataTable);
+            const minSize = calculateMinimumTableSize(table);
+            
+            // Reset table to show full content
+            const fullTableHeight = Math.max(naturalHeight + mydivHeaderHeight, minSize.height);
+            setTableHeights(table, fullTableHeight, 'full');
+            
+            // Also reset width to properly fit content
+            table.mydiv.style.width = Math.max(minSize.width, getScrollWidth(table.dataTable)) + 'px';
+        } else {
+            // Switch to 'full' mode
+            table.resizeMode = 'full';
+            table.dataTable.style.display = null;
+            table.dataTable.style.overflow = null;
+            updateResize(table);
+        }
     };
     table.mydivheader.appendChild(bothResizeBtn);
 
@@ -139,30 +166,51 @@ function createTableBody(table) {
 }
 
 function setupDragAndResize(table) {
-    // Add resizer
-    table.resizer = document.createElement('div');
-    table.resizer.id = 'resizer' + table.index;
-    table.resizer.style.width = '10px';
-    table.resizer.style.height = '10px';
-    table.resizer.style.backgroundColor = 'black';
-    table.resizer.style.position = 'absolute';
-    table.resizer.style.right = '0';
-    table.resizer.style.bottom = '0';
-    table.resizer.style.cursor = 'se-resize';
-    table.mydiv.appendChild(table.resizer);
-
-    // Setup resize functionality
-    table.resizer.addEventListener('mousedown', function(event) {
-        event.preventDefault();
-        startX = event.clientX;
-        startY = event.clientY;
-        startWidth = parseInt(table.mydiv.style.width, 10);
-        startHeight = parseInt(table.mydiv.style.height, 10);
-
-        currentResizeFunction = function(e) { doResize(e, table); };
-        document.documentElement.addEventListener('mousemove', currentResizeFunction, false);
-        document.documentElement.addEventListener('mouseup', stopResize, false);
+    // Create resizing handles for all edges and corners
+    const handlePositions = [
+        { position: 'n', cursor: 'ns-resize', left: '50%', top: '0', right: 'auto', bottom: 'auto', width: '10px', height: '5px', transform: 'translateX(-50%)' },
+        { position: 'e', cursor: 'ew-resize', left: 'auto', top: '50%', right: '0', bottom: 'auto', width: '5px', height: '10px', transform: 'translateY(-50%)' },
+        { position: 's', cursor: 'ns-resize', left: '50%', top: 'auto', right: 'auto', bottom: '0', width: '10px', height: '5px', transform: 'translateX(-50%)' },
+        { position: 'w', cursor: 'ew-resize', left: '0', top: '50%', right: 'auto', bottom: 'auto', width: '5px', height: '10px', transform: 'translateY(-50%)' },
+        { position: 'ne', cursor: 'ne-resize', left: 'auto', top: '0', right: '0', bottom: 'auto', width: '10px', height: '10px', transform: 'none' },
+        { position: 'se', cursor: 'se-resize', left: 'auto', top: 'auto', right: '0', bottom: '0', width: '10px', height: '10px', transform: 'none' },
+        { position: 'sw', cursor: 'sw-resize', left: '0', top: 'auto', right: 'auto', bottom: '0', width: '10px', height: '10px', transform: 'none' },
+        { position: 'nw', cursor: 'nw-resize', left: '0', top: '0', right: 'auto', bottom: 'auto', width: '10px', height: '10px', transform: 'none' }
+    ];
+    
+    // Create and attach all resize handles
+    table.resizers = {};
+    
+    handlePositions.forEach(handle => {
+        const resizer = document.createElement('div');
+        resizer.id = `resizer-${handle.position}-${table.index}`;
+        resizer.className = `resizer resizer-${handle.position}`;
+        resizer.style.position = 'absolute';
+        resizer.style.cursor = handle.cursor;
+        resizer.style.background = 'transparent';
+        resizer.style.zIndex = '10';
+        
+        // Set position
+        resizer.style.left = handle.left;
+        resizer.style.top = handle.top;
+        resizer.style.right = handle.right;
+        resizer.style.bottom = handle.bottom;
+        resizer.style.width = handle.width;
+        resizer.style.height = handle.height;
+        
+        if (handle.transform) {
+            resizer.style.transform = handle.transform;
+        }
+        
+        table.mydiv.appendChild(resizer);
+        table.resizers[handle.position] = resizer;
     });
+    
+    // Store the main resizer (se) for backward compatibility
+    table.resizer = table.resizers.se;
+    
+    // Setup resize functionality
+    enableResize(table);
 
     // Setup drag functionality
     dragElement(table.mydiv, 'mydivheader' + table.index, table);
@@ -188,23 +236,78 @@ function toggleTablePin(table) {
 }
 
 function enableResize(table) {
-    table.resizer.style.cursor = 'se-resize';
-    table.resizer.addEventListener('mousedown', function(event) {
-        event.preventDefault();
-        startX = event.clientX;
-        startY = event.clientY;
-        startWidth = parseInt(table.mydiv.style.width, 10);
-        startHeight = parseInt(table.mydiv.style.height, 10);
-
-        currentResizeFunction = function(e) { doResize(e, table); };
-        document.documentElement.addEventListener('mousemove', currentResizeFunction, false);
-        document.documentElement.addEventListener('mouseup', stopResize, false);
+    // For backward compatibility, ensure resizers object exists
+    if (!table.resizers) {
+        table.resizers = { se: table.resizer };
+    }
+    
+    // Iterate through all resizers and attach event listeners
+    Object.entries(table.resizers).forEach(([position, resizer]) => {
+        // Set cursor based on position
+        resizer.style.cursor = position.includes('n') ? (position.includes('e') ? 'ne-resize' : position.includes('w') ? 'nw-resize' : 'ns-resize') :
+                              position.includes('s') ? (position.includes('e') ? 'se-resize' : position.includes('w') ? 'sw-resize' : 'ns-resize') :
+                              position.includes('e') || position.includes('w') ? 'ew-resize' : 'se-resize';
+        
+        // Remove any existing event listeners by cloning and replacing
+        const oldResizer = resizer;
+        const newResizer = oldResizer.cloneNode(true);
+        oldResizer.parentNode.replaceChild(newResizer, oldResizer);
+        table.resizers[position] = newResizer;
+        
+        if (position === 'se') {
+            table.resizer = newResizer; // Update the main resizer reference
+        }
+        
+        // Add the resize event listener
+        newResizer.addEventListener('mousedown', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // Store starting values
+            startX = event.clientX;
+            startY = event.clientY;
+            startWidth = parseInt(document.defaultView.getComputedStyle(table.mydiv).width, 10);
+            startHeight = parseInt(document.defaultView.getComputedStyle(table.mydiv).height, 10);
+            const startLeft = parseInt(document.defaultView.getComputedStyle(table.mydiv).left, 10);
+            const startTop = parseInt(document.defaultView.getComputedStyle(table.mydiv).top, 10);
+            
+            // Create a resize function specific to this handle's position
+            currentResizeFunction = function(e) {
+                doResizeWithPosition(e, table, position, startWidth, startHeight, startLeft, startTop);
+            };
+            
+            // Add event listeners for mouse movement and release
+            document.documentElement.addEventListener('mousemove', currentResizeFunction, false);
+            document.documentElement.addEventListener('mouseup', stopResize, false);
+        });
     });
 }
 
 function disableResize(table) {
-    table.resizer.style.cursor = 'default';
-    table.resizer.removeEventListener('mousedown', currentResizeFunction);
+    // For backward compatibility
+    if (!table.resizers) {
+        table.resizers = { se: table.resizer };
+    }
+    
+    // Disable all resizers
+    Object.entries(table.resizers).forEach(([position, resizer]) => {
+        resizer.style.cursor = 'default';
+        
+        // Clone and replace to remove all event listeners
+        const oldResizer = resizer;
+        const newResizer = oldResizer.cloneNode(true);
+        oldResizer.parentNode.replaceChild(newResizer, oldResizer);
+        table.resizers[position] = newResizer;
+        
+        if (position === 'se') {
+            table.resizer = newResizer; // Update the main resizer reference
+        }
+    });
+    
+    // Make sure any ongoing resize operation is stopped
+    if (currentResizeFunction) {
+        stopResize();
+    }
 }
 
 function createTableRows(table) {

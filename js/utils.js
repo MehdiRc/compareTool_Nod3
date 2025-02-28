@@ -13,6 +13,11 @@ let restrictedMode = false;
 let histBinFunction = "sturges";
 let resizeFunction;
 
+// Default row and column sizes for minimum size calculation
+const DEFAULT_ROW_HEIGHT = 38; // Average height of a table row in pixels
+const DEFAULT_HEADER_HEIGHT = 42; // Height of the header row
+const DEFAULT_COLUMN_WIDTH = 110; // Average width of a column including padding
+
 // Global data structures
 let priorities = {};
 let idealValues = {};
@@ -41,6 +46,21 @@ function defaultCategoricalMapping(column) {
     const mapping = {};
     categories.forEach(cat => mapping[cat] = 0);
     return mapping;
+}
+
+function calculateMinimumTableSize(table) {
+    // Get the number of rows and columns
+    const numRows = table.data.length + 1; // Add 1 for the mean row
+    const numColumns = table.keys.length + 1; // Add 1 for the score column
+    
+    // Calculate minimum width and height
+    const minWidth = numColumns * DEFAULT_COLUMN_WIDTH;
+    const minHeight = (numRows * DEFAULT_ROW_HEIGHT) + DEFAULT_HEADER_HEIGHT;
+    
+    return {
+        width: minWidth,
+        height: minHeight
+    };
 }
 
 async function readFile(file) {
